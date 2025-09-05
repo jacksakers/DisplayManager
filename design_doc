@@ -1,0 +1,85 @@
+Display Manager Design Document
+1. Overview
+This document outlines the design for a new centralized service, the Display Manager, to control the content shown on a Raspberry Pi's display. The goal is to create a system where a user can remotely select a "mode" (e.g., "InfoHub" or "Security") from a webpage on their phone, and the Pi's display will update accordingly. The system must be extensible to allow for new modes in the future.
+
+2. System Architecture
+We will introduce a new, lightweight Flask server called display-manager. This server will act as the central brain of the operation. The Pi's display browser will point to this new server, which will in turn display the content from the other services (smart-frame or stream_server) within an <iframe>.
+
+This decoupled architecture is superior because:
+
+Single Responsibility: Each service has one clear job. smart-frame serves photos, stream_server serves video, and display-manager manages what is shown.
+
+Extensibility: Adding a new view (e.g., a weather dashboard) only requires changes to the display-manager, not to any other existing services.
+
+Robustness: If the smart-frame service crashes, the display-manager can still be used to switch to the security camera view.
+
+The flow will be as follows:
+
+The Raspberry Pi's browser (in kiosk mode) loads the Display Page from the display-manager.
+
+The user loads the Control Page from the display-manager on their phone.
+
+When the user taps a mode on the Control Page, it tells the display-manager to change its state.
+
+The Display Page on the Pi periodically asks the display-manager for the current state. When it detects a change, it updates its content to show the correct webpage.
+
+3. Component Breakdown
+A. Display Manager Service
+This is the new Python Flask server you'll create.
+
+Technology: Python 3, Flask
+
+Port: 8000 (or another unused port)
+
+State Management: A simple Python dictionary will map mode names to their URLs and store the currently active mode.
+
+Python
+
+# In your main Flask app file
+MODES = {
+    "infohub": {"name": "InfoHub", "url": "http://localhost:5000"},
+    "security": {"name": "Security Camera", "url": "http://localhost:8080"}
+}
+current_mode = "infohub" # Default mode
+API Endpoints:
+
+GET /: Display Page. Serves the main index.html file that will be shown on the Pi's display.
+
+GET /control: Control Page. Serves the control.html file that will be used on a mobile device to switch modes.
+
+GET /api/state: Returns the current state as JSON. This is what the display page will poll.
+
+Response: { "mode": "infohub", "url": "http://localhost:5000" }
+
+POST /api/mode: Sets the new mode. The control page sends the new mode here.
+
+Request Body: { "mode": "security" }
+
+Response: { "status": "success", "new_mode": "security" }
+
+B. Display Page (index.html)
+This is the webpage that will be loaded in kiosk mode on the Pi's display. It's a very simple page whose only job is to display other pages.
+
+Structure: A minimal HTML file with an <iframe> that fills the entire screen.
+
+HTML
+
+<iframe id="content-frame" src=""></iframe>
+Logic (JavaScript):
+
+On page load, immediately fetch the current state from /api/state and set the <iframe>'s src attribute.
+
+Use setInterval to poll the /api/state endpoint every 2-5 seconds.
+
+If the returned mode is different from the one currently displayed, update the <iframe>'s src to the new URL. This will change the view on the screen without a full page refresh.
+
+C. Control Page (control.html)
+This is the simple remote control interface for your phone.
+
+Structure: Basic HTML with a button for each available mode (e.g., "Show InfoHub", "Show Security Camera").
+
+Logic (JavaScript):
+
+Each button has an onclick event listener.
+
+When a button is clicked, it uses the fetch API to send a POST request to /api/mode with the name of the desired mode in the JSON body.

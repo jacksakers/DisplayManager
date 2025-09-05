@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Display Manager Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    backdropBlur: {
+                        'xs': '2px',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .glass-button {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        .glass-button:hover {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        .glass-current {
+            background: rgba(74, 222, 128, 0.3);
+            border-color: #4ade80;
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen p-5 text-white font-sans">
+    <div class="max-w-sm mx-auto pt-12 sm:pt-8">
+        <h1 class="text-center mb-8 font-light text-4xl sm:text-5xl" style="text-shadow: 0 2px 4px rgba(0,0,0,0.3);">🖥️ Display Control</h1>
+        
+        <div class="glass rounded-2xl p-5 mb-8 text-center">
+            <h3 class="mb-3 font-medium text-lg">Currently Showing:</h3>
+            <div class="text-xl font-bold text-green-400" id="current-mode-display">Loading...</div>
+        </div>
+        
+        <div class="flex flex-col gap-4" id="mode-buttons">
+            <!-- Buttons will be populated by JavaScript -->
+        </div>
+        
+        <div class="mt-5 p-4 rounded-xl text-center font-medium hidden" id="status-message"></div>
+        
+        <div class="mt-10 text-center opacity-70 text-sm">
+            <p>Tap a mode to switch the display</p>
+        </div>
+    </div>
+
+    <script>
+        let currentMode = null;
+        let modes = {};
+        
+        const currentModeDisplay = document.getElementById('current-mode-display');
+        const modeButtonsContainer = document.getElementById('mode-buttons');
+        const statusMessage = document.getElementById('status-message');
+        
+        async function fetchCurrentState() {
+            try {
+                const response = await fetch('/api/state');
+                const data = await response.json();
+                
+                currentMode = data.mode;
+                currentModeDisplay.textContent = modes[currentMode]?.name || currentMode;
+                
+                updateButtonStates();
+                
+            } catch (error) {
+                console.error('Failed to fetch current state:', error);
+                currentModeDisplay.textContent = 'Connection Error';
+            }
+        }
+        
+        async function fetchModes() {
+            try {
+                const response = await fetch('/api/modes');
+                modes = await response.json();
+                
+                createModeButtons();
+                
+            } catch (error) {
+                console.error('Failed to fetch modes:', error);
+                showStatus('Failed to load modes', 'error');
+            }
+        }
+        
+        function createModeButtons() {
+            modeButtonsContainer.innerHTML = '';
+            
+            Object.keys(modes).forEach(modeKey => {
+                const mode = modes[modeKey];
+                const button = document.createElement('button');
+                button.className = 'glass-button rounded-2xl p-5 text-white text-xl font-medium cursor-pointer transition-all duration-300 ease-in-out text-center outline-none transform hover:-translate-y-1 hover:shadow-lg active:translate-y-0 active:shadow-md';
+                button.dataset.mode = modeKey;
+                button.textContent = mode.name;
+                
+                button.addEventListener('click', () => switchMode(modeKey));
+                
+                modeButtonsContainer.appendChild(button);
+            });
+        }
+        
+        function updateButtonStates() {
+            const buttons = document.querySelectorAll('.glass-button');
+            buttons.forEach(button => {
+                if (button.dataset.mode === currentMode) {
+                    button.className = button.className.replace('glass-button', 'glass-current');
+                    button.classList.add('cursor-default');
+                    button.classList.remove('hover:-translate-y-1', 'hover:shadow-lg', 'active:translate-y-0', 'active:shadow-md');
+                } else {
+                    button.className = button.className.replace('glass-current', 'glass-button');
+                    button.classList.remove('cursor-default');
+                    button.classList.add('hover:-translate-y-1', 'hover:shadow-lg', 'active:translate-y-0', 'active:shadow-md');
+                }
+            });
+        }
+        
+        async function switchMode(modeKey) {
+            if (modeKey === currentMode) {
+                return; // Already in this mode
+            }
+            
+            try {
+                // Show loading state
+                document.body.classList.add('opacity-60', 'pointer-events-none');
+                showStatus('Switching mode...', 'success');
+                
+                const response = await fetch('/api/mode', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ mode: modeKey })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentMode = modeKey;
+                    currentModeDisplay.textContent = modes[modeKey].name;
+                    updateButtonStates();
+                    showStatus(`Switched to ${modes[modeKey].name}`, 'success');
+                } else {
+                    showStatus(data.error || 'Failed to switch mode', 'error');
+                }
+                
+            } catch (error) {
+                console.error('Failed to switch mode:', error);
+                showStatus('Connection error', 'error');
+            } finally {
+                document.body.classList.remove('opacity-60', 'pointer-events-none');
+            }
+        }
+        
+        function showStatus(message, type) {
+            statusMessage.textContent = message;
+            statusMessage.className = `mt-5 p-4 rounded-xl text-center font-medium block`;
+            
+            if (type === 'success') {
+                statusMessage.classList.add('bg-green-500', 'bg-opacity-20', 'border', 'border-green-400', 'text-green-400');
+                statusMessage.classList.remove('bg-red-500', 'bg-opacity-20', 'border-red-400', 'text-red-400');
+            } else if (type === 'error') {
+                statusMessage.classList.add('bg-red-500', 'bg-opacity-20', 'border', 'border-red-400', 'text-red-400');
+                statusMessage.classList.remove('bg-green-500', 'bg-opacity-20', 'border-green-400', 'text-green-400');
+            }
+            
+            // Hide after 3 seconds
+            setTimeout(() => {
+                statusMessage.classList.replace('block', 'hidden');
+            }, 3000);
+        }
+        
+        // Initialize
+        async function initialize() {
+            await fetchModes();
+            await fetchCurrentState();
+            
+            // Poll for state changes every 5 seconds
+            setInterval(fetchCurrentState, 5000);
+        }
+        
+        document.addEventListener('DOMContentLoaded', initialize);
+    </script>
+</body>
+</html>

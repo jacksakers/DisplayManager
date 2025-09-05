@@ -1,0 +1,29 @@
+[Unit]
+Description=Display Manager Service
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/DisplayManager
+Environment=PATH=/home/pi/DisplayManager/venv/bin
+ExecStart=/home/pi/DisplayManager/venv/bin/python app.py
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=display-manager
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/home/pi/DisplayManager
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Display Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            font-family: Arial, sans-serif;
+        }
+        
+        #content-frame {
+            width: 100%;
+            height: 100vh;
+            border: none;
+            display: block;
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            z-index: 1000;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        #error-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff6b6b;
+            font-size: 18px;
+            text-align: center;
+            z-index: 1001;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 80%;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">Loading display...</div>
+    
+    <div id="error-message" class="hidden">
+        <h3>Connection Error</h3>
+        <p>Unable to connect to display services. Retrying...</p>
+    </div>
+    
+    <iframe id="content-frame" src="" class="hidden"></iframe>
+
+    <script>
+        let currentMode = null;
+        let currentUrl = null;
+        let retryCount = 0;
+        const maxRetries = 5;
+        const pollInterval = 3000; // Poll every 3 seconds
+        
+        const loadingEl = document.getElementById('loading');
+        const errorEl = document.getElementById('error-message');
+        const frameEl = document.getElementById('content-frame');
+        
+        async function fetchCurrentState() {
+            try {
+                const response = await fetch('/api/state');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                retryCount = 0; // Reset retry count on success
+                hideError();
+                
+                // Check if the mode or URL has changed
+                if (data.mode !== currentMode || data.url !== currentUrl) {
+                    console.log(`Mode changed from '${currentMode}' to '${data.mode}'`);
+                    console.log(`URL changed from '${currentUrl}' to '${data.url}'`);
+                    
+                    currentMode = data.mode;
+                    currentUrl = data.url;
+                    updateDisplay(data.url);
+                }
+                
+            } catch (error) {
+                console.error('Failed to fetch state:', error);
+                retryCount++;
+                
+                if (retryCount >= maxRetries) {
+                    showError();
+                }
+            }
+        }
+        
+        function updateDisplay(url) {
+            console.log(`Updating display to: ${url}`);
+            
+            // Show loading while switching
+            loadingEl.textContent = `Switching to ${currentMode}...`;
+            loadingEl.classList.remove('hidden');
+            frameEl.classList.add('hidden');
+            
+            // Update iframe source
+            frameEl.src = url;
+            
+            // Show the iframe once it loads
+            frameEl.onload = function() {
+                console.log('Frame loaded successfully');
+                loadingEl.classList.add('hidden');
+                frameEl.classList.remove('hidden');
+            };
+            
+            // Handle iframe load errors
+            frameEl.onerror = function() {
+                console.error('Frame failed to load');
+                loadingEl.textContent = `Failed to load ${currentMode}`;
+            };
+        }
+        
+        function showError() {
+            errorEl.classList.remove('hidden');
+            frameEl.classList.add('hidden');
+            loadingEl.classList.add('hidden');
+        }
+        
+        function hideError() {
+            errorEl.classList.add('hidden');
+        }
+        
+        // Initialize the display
+        function initialize() {
+            console.log('Display Manager initializing...');
+            
+            // Fetch initial state
+            fetchCurrentState();
+            
+            // Set up polling for state changes
+            setInterval(fetchCurrentState, pollInterval);
+        }
+        
+        // Start when page loads
+        document.addEventListener('DOMContentLoaded', initialize);
+        
+        // Handle visibility change (for when display goes to sleep/wake)
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                console.log('Display became visible, refreshing state...');
+                fetchCurrentState();
+            }
+        });
+    </script>
+</body>
+</html>
