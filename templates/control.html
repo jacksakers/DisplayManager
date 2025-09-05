@@ -55,8 +55,13 @@
         
         <div class="mt-5 p-4 rounded-xl text-center font-medium hidden" id="status-message"></div>
         
-        <div class="mt-10 text-center opacity-70 text-sm">
-            <p>Tap a mode to switch the display</p>
+        <!-- Links to other pages or resources -->
+        <div class="mt-5 text-center space-y-2">
+            <h2 class="font-medium text-lg">Links:</h2>
+            <ul class="space-y-1">
+                <li><a href="http://localhost:5000/upload" class="text-black-400 underline">Upload to InfoHub</a></li>
+                <li><a href="http://localhost:5001" class="text-black-400 underline">ChoreBoard</a></li>
+            </ul>
         </div>
     </div>
 
@@ -115,6 +120,7 @@
         
         function updateButtonStates() {
             const buttons = document.querySelectorAll('.glass-button');
+            const currentButtons = document.querySelectorAll('.glass-current');
             buttons.forEach(button => {
                 if (button.dataset.mode === currentMode) {
                     button.className = button.className.replace('glass-button', 'glass-current');
@@ -124,6 +130,13 @@
                     button.className = button.className.replace('glass-current', 'glass-button');
                     button.classList.remove('cursor-default');
                     button.classList.add('hover:-translate-y-1', 'hover:shadow-lg', 'active:translate-y-0', 'active:shadow-md');
+                }
+            });
+            currentButtons.forEach(btn => {
+                if (btn.dataset.mode !== currentMode) {
+                    btn.className = btn.className.replace('glass-current', 'glass-button');
+                    btn.classList.remove('cursor-default');
+                    btn.classList.add('hover:-translate-y-1', 'hover:shadow-lg', 'active:translate-y-0', 'active:shadow-md');
                 }
             });
         }
@@ -170,7 +183,7 @@
             statusMessage.className = `mt-5 p-4 rounded-xl text-center font-medium block`;
             
             if (type === 'success') {
-                statusMessage.classList.add('bg-green-500', 'bg-opacity-20', 'border', 'border-green-400', 'text-green-400');
+                statusMessage.classList.add('bg-green-500', 'bg-opacity-20', 'border', 'border-green-400', 'text-white-400');
                 statusMessage.classList.remove('bg-red-500', 'bg-opacity-20', 'border-red-400', 'text-red-400');
             } else if (type === 'error') {
                 statusMessage.classList.add('bg-red-500', 'bg-opacity-20', 'border', 'border-red-400', 'text-red-400');

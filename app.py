@@ -8,7 +8,7 @@ from flask import Flask, render_template, request, jsonify
 # Available display modes with their URLs
 MODES = {
     "infohub": {"name": "InfoHub", "url": "http://localhost:5000"},
-    "security": {"name": "Security Camera", "url": "http://localhost:8080"}
+    "security": {"name": "Surveillance Mode", "url": "http://localhost:8080"}
 }
 
 # Default mode
