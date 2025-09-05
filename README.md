@@ -61,8 +61,8 @@ The Display Manager acts as a central hub that controls what is shown on the Pi'
    ```bash
    sudo cp display-manager.service /etc/systemd/system/
    sudo systemctl daemon-reload
-   sudo systemctl enable display-manager
-   sudo systemctl start display-manager
+   sudo systemctl enable smart-display-manager
+   sudo systemctl start smart-display-manager
    ```
 
 ## Usage

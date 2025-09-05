@@ -1,0 +1,17 @@
+[Unit]
+Description=Smart Display Manager Service
+After=network.target
+
+[Service]
+
+User=jackberry
+Group=jackberry
+
+WorkingDirectory=/home/jackberry/usbdrv/DisplayManager
+
+ExecStart=/usr/bin/python3 /home/jackberry/usbdrv/DisplayManager/app.py
+
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
